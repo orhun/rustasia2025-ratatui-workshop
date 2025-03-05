@@ -86,17 +86,10 @@ impl App {
     fn update_network_data(&mut self) {
         self.networks.refresh(true);
         for (interface_name, network) in &self.networks {
-            let (received, transmitted) =
-                (network.packets_received(), network.packets_transmitted());
-            if !self.network_data.contains_key(interface_name) {
-                self.network_data
-                    .insert(interface_name.clone(), vec![received + transmitted]);
-            } else {
-                self.network_data
-                    .get_mut(interface_name)
-                    .unwrap()
-                    .push(received + transmitted);
-            }
+            self.network_data
+                .entry(interface_name.clone())
+                .or_default()
+                .push(network.packets_received() + network.packets_transmitted());
         }
     }
 
