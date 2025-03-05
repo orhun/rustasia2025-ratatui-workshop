@@ -5,9 +5,10 @@ use ratatui::{
     DefaultTerminal,
     buffer::Buffer,
     crossterm::event::{self, Event, KeyCode, KeyEventKind},
-    layout::{Alignment, Constraint::*, Direction, Layout, Margin, Rect},
+    layout::{Alignment, Constraint::*, Direction, Layout, Rect},
     style::{Style, Stylize, palette::tailwind},
     symbols::Marker,
+    text::Line,
     widgets::{
         Axis, Bar, BarChart, BarGroup, Block, BorderType, Chart, Dataset, GraphType, Paragraph,
         RenderDirection, Row, Sparkline, StatefulWidget, Table, TableState, Widget,
@@ -293,27 +294,32 @@ impl App {
             .style(Style::new().bg(tailwind::GRAY.c900))
             .title_alignment(Alignment::Left)
             .border_style(tailwind::GRAY.c700);
-
+        let inner = block.inner(area);
         block.render(area, buf);
 
-        let areas =
-            Layout::vertical([Fill(1)].repeat(self.network_data.len())).split(area.inner(Margin {
-                horizontal: 1,
-                vertical: 1,
-            }));
+        let mut network_data = self.network_data.iter().collect::<Vec<_>>();
+        network_data.sort_by(|(name1, _), (name2, _)| name1.cmp(name2));
+        let longest_name = network_data
+            .iter()
+            .map(|(name, _)| name.len())
+            .max()
+            .unwrap_or(0);
+        let layout = Layout::horizontal([Length(longest_name as u16), Fill(1)]).spacing(1);
+        let [name_area, data_area] = layout.areas(inner);
 
-        for (i, (interface_name, data)) in self.network_data.iter().enumerate() {
-            let area = areas[i];
-            let sparkline = Sparkline::default()
-                .block(
-                    Block::bordered()
-                        .border_style(tailwind::GRAY.c800)
-                        .title(interface_name.clone().fg(tailwind::BLUE.c200)),
-                )
-                .data(data.iter().rev().take(area.width as usize).rev())
+        for (((name, data), name_row), data_row) in network_data
+            .into_iter()
+            .zip(name_area.rows())
+            .zip(data_area.rows())
+        {
+            Line::from(name.clone())
+                .fg(tailwind::BLUE.c200)
+                .render(name_row, buf);
+            Sparkline::default()
+                .data(data.iter().rev().take(data_area.width as usize).rev())
                 .direction(RenderDirection::LeftToRight)
-                .style(Style::new().fg(tailwind::GREEN.c400));
-            sparkline.render(area, buf);
+                .style(tailwind::GREEN.c400)
+                .render(data_row, buf);
         }
     }
 
