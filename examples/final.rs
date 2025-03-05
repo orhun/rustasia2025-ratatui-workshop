@@ -167,16 +167,6 @@ impl App {
                 _ => tailwind::RED.c600,
             });
 
-        let block = Block::bordered()
-            .border_type(BorderType::Rounded)
-            .title(vec![
-                "| ".fg(tailwind::GRAY.c700),
-                "CPU".fg(tailwind::BLUE.c200),
-                " |".fg(tailwind::GRAY.c600),
-            ])
-            .title_alignment(Alignment::Right)
-            .border_style(tailwind::GRAY.c700);
-
         let datasets = vec![
             Dataset::default()
                 .marker(Marker::Braille)
@@ -199,7 +189,7 @@ impl App {
             .style(tailwind::GRAY.c600);
 
         let chart = Chart::new(datasets)
-            .block(block)
+            .block(pane("CPU").title_alignment(Alignment::Right))
             .style(Style::new().bg(tailwind::GRAY.c900))
             .x_axis(x_axis)
             .y_axis(y_axis);
@@ -208,16 +198,6 @@ impl App {
     }
 
     fn render_disk(&self, area: Rect, buf: &mut Buffer) {
-        let block = Block::bordered()
-            .border_type(BorderType::Rounded)
-            .title(vec![
-                "| ".fg(tailwind::GRAY.c700),
-                "Disks".fg(tailwind::BLUE.c200),
-                " |".fg(tailwind::GRAY.c600),
-            ])
-            .title_alignment(Alignment::Left)
-            .border_style(tailwind::GRAY.c700);
-
         let bars = self
             .disk_data
             .iter()
@@ -234,7 +214,7 @@ impl App {
             .collect::<Vec<_>>();
 
         let chart = BarChart::default()
-            .block(block)
+            .block(pane("Disks"))
             .style(Style::new().bg(tailwind::GRAY.c900))
             .direction(Direction::Horizontal)
             .data(BarGroup::default().bars(&bars))
@@ -255,16 +235,6 @@ impl App {
                 _ => tailwind::RED.c600,
             });
 
-        let block = Block::bordered()
-            .border_type(BorderType::Rounded)
-            .title(vec![
-                "| ".fg(tailwind::GRAY.c700),
-                "Memory".fg(tailwind::BLUE.c200),
-                " |".fg(tailwind::GRAY.c600),
-            ])
-            .title_alignment(Alignment::Left)
-            .border_style(tailwind::GRAY.c700);
-
         let datasets = vec![
             Dataset::default()
                 .name(current_percentage_line)
@@ -277,7 +247,7 @@ impl App {
         let y_axis = Axis::default().bounds([0.0, self.system.total_memory() as f64]);
         let chart = Chart::new(datasets)
             .style(Style::new().bg(tailwind::GRAY.c900))
-            .block(block)
+            .block(pane("Memory"))
             .x_axis(x_axis)
             .y_axis(y_axis);
 
@@ -285,16 +255,7 @@ impl App {
     }
 
     fn render_network(&self, area: Rect, buf: &mut Buffer) {
-        let block = Block::bordered()
-            .border_type(BorderType::Rounded)
-            .title(vec![
-                "| ".fg(tailwind::GRAY.c700),
-                "Network".fg(tailwind::BLUE.c200),
-                " |".fg(tailwind::GRAY.c600),
-            ])
-            .style(Style::new().bg(tailwind::GRAY.c900))
-            .title_alignment(Alignment::Left)
-            .border_style(tailwind::GRAY.c700);
+        let block = pane("Network");
         let inner = block.inner(area);
         block.render(area, buf);
 
@@ -325,17 +286,6 @@ impl App {
     }
 
     fn render_process(&mut self, area: Rect, buf: &mut Buffer) {
-        let block = Block::bordered()
-            .border_type(BorderType::Rounded)
-            .title(vec![
-                "| ".fg(tailwind::GRAY.c700),
-                "Processes".fg(tailwind::BLUE.c200),
-                " |".fg(tailwind::GRAY.c600),
-            ])
-            .style(Style::new().bg(tailwind::GRAY.c900))
-            .title_alignment(Alignment::Left)
-            .border_style(tailwind::GRAY.c700);
-
         let header = Row::new(vec!["Pid", "Cmd", "CPU%", "Mem%"]).style(tailwind::YELLOW.c200);
         let widths = [Length(10), Fill(2), Fill(1), Fill(1)];
         let mut rows = Vec::new();
@@ -369,8 +319,23 @@ impl App {
         .style(tailwind::GRAY.c900)
         .row_highlight_style(Style::new().bg(tailwind::GRAY.c800).fg(tailwind::BLUE.c200))
         .highlight_symbol("> ")
-        .block(block);
+        .block(pane("Processes"));
 
         StatefulWidget::render(table, area, buf, &mut self.table_state);
     }
+}
+
+/// Creates a bordered block with a title.
+fn pane(title: &str) -> Block {
+    let title = Line::from_iter([
+        "┤ ".fg(tailwind::GRAY.c700),
+        title.fg(tailwind::BLUE.c200),
+        " ├".fg(tailwind::GRAY.c700),
+    ]);
+    Block::bordered()
+        .border_type(BorderType::Rounded)
+        .title(title)
+        .title_alignment(Alignment::Left)
+        .border_style(tailwind::GRAY.c700)
+        .style(Style::new().bg(tailwind::GRAY.c900))
 }
