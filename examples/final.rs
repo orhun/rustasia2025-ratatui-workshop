@@ -33,9 +33,16 @@ struct App {
 
     cpu_data: Vec<(f64, f64)>,
     memory_data: Vec<(f64, f64)>,
-    disk_data: Vec<(String, u64)>,
+    disk_data: Vec<DiskData>,
     network_data: HashMap<String, Vec<u64>>,
     table_state: TableState,
+}
+
+#[derive(Debug)]
+struct DiskData {
+    name: String,
+    available: u64,
+    total: u64,
 }
 
 impl Default for App {
@@ -70,18 +77,16 @@ impl App {
 
     fn update_disk_data(&mut self) {
         self.disks.refresh(true);
-        for disk in self.disks.list() {
-            self.disk_data.push((
-                disk.name()
-                    .to_string_lossy()
-                    .to_string()
-                    .rsplit('/')
-                    .next()
-                    .unwrap()
-                    .to_string(),
-                (disk.available_space() as f64 / disk.total_space() as f64 * 100.0) as u64,
-            ));
-        }
+        self.disk_data = self
+            .disks
+            .list()
+            .iter()
+            .map(|disk| DiskData {
+                name: disk.name().to_string_lossy().to_string(),
+                available: disk.available_space(),
+                total: disk.total_space(),
+            })
+            .collect();
     }
 
     fn update_network_data(&mut self) {
@@ -201,28 +206,31 @@ impl App {
         let bars = self
             .disk_data
             .iter()
-            .map(|(name, value)| {
+            .map(|disk| {
+                let name = disk.name.rsplit('/').next().unwrap().to_string();
+                let percent = (disk.available as f64 / disk.total as f64 * 100.0) as u64;
+                let style = match percent {
+                    0..=50 => tailwind::GREEN.c400,
+                    51..=80 => tailwind::YELLOW.c300,
+                    _ => tailwind::RED.c600,
+                };
                 Bar::default()
-                    .label(name.clone().fg(tailwind::BLUE.c100).into())
-                    .value(*value)
-                    .style(match value {
-                        0..=50 => tailwind::GREEN.c400,
-                        51..=80 => tailwind::YELLOW.c300,
-                        _ => tailwind::RED.c600,
-                    })
+                    .label(name.fg(tailwind::BLUE.c100).into())
+                    .value(percent)
+                    .style(style)
             })
             .collect::<Vec<_>>();
 
-        let chart = BarChart::default()
+        let data = BarGroup::default().bars(&bars);
+        BarChart::default()
             .block(pane("Disks"))
             .style(Style::new().bg(tailwind::GRAY.c900))
             .direction(Direction::Horizontal)
-            .data(BarGroup::default().bars(&bars))
+            .data(data)
             .bar_gap(1)
             .bar_width(1)
-            .bar_style(Style::new().on_black());
-
-        chart.render(area, buf);
+            .bar_style(Style::new().on_black())
+            .render(area, buf);
     }
 
     fn render_memory(&self, area: Rect, buf: &mut Buffer) {
